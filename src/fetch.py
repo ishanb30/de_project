@@ -105,6 +105,10 @@ def _get_last_watermark(run_id: str, max_retries: int=3) -> int | None:
             raise RuntimeError("Max retries exhausted: Failed to read "
                                "from Snowflake due to network error") from last_exception
 
+        else:
+            raise RuntimeError("Max retries exhausted: Unrecognised exception "
+                               "type whilst retrieving watermark") from last_exception
+
 def _get_lookback_window_mins(run_id: str) -> int:
     logger = get_logger(__name__, run_id)
 
@@ -182,13 +186,17 @@ def get_api_data(run_id: str, max_retries: int=3) -> list:
             raise RuntimeError(f"Max retries exhausted: "
                                f"Get request failed due to connection failure") from last_exception
 
-        if isinstance(last_exception, requests.exceptions.Timeout):
+        elif isinstance(last_exception, requests.exceptions.Timeout):
             raise RuntimeError(f"Max retries exhausted: "
                                f"Get request timed out") from last_exception
 
-        if isinstance(last_exception, requests.exceptions.HTTPError):
+        elif isinstance(last_exception, requests.exceptions.HTTPError):
             raise RuntimeError(f"Max retries exhausted: "
                                f"Get request failed due to server errors or rate limits") from last_exception
+
+        else:
+            raise RuntimeError("Max retries exhausted: Unrecognised exception "
+                               "type whilst retrieving Spotify API response") from last_exception
 
 if __name__ == "__main__":
       run_id = str(uuid.uuid4())

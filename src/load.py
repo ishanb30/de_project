@@ -59,6 +59,11 @@ def load(run_id: str, data: list, max_retries: int=3) -> str | None:
                 raise RuntimeError("Max retries exhausted: "
                                    "Failed to load to Snowflake due to network error") from last_exception
 
+            else:
+                raise RuntimeError("Max retries exhausted: Unrecognised exception "
+                                   "type whilst loading data into RECENTLY_PLAYED table "
+                                   "via Snowflake connector") from last_exception
+
         logger.info(f"Load completed with {len(data)} play events")
 
         watermark = datetime.fromisoformat(max([d["played_at"] for d in data]))
