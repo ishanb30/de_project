@@ -6,7 +6,6 @@ import time
 import base64
 import requests
 from utils.logging import get_logger
-from utils.helpers import _load_env
 
 def _load_tokens() -> dict:
     try:
@@ -46,16 +45,13 @@ def _load_tokens() -> dict:
     return validated_data
 
 def _create_request_params(token_data: dict) -> tuple[dict, dict]:
-    var_names = ["CLIENT_ID", "CLIENT_SECRET"]
-    env_var = _load_env(var_names)
-
     refresh_token = token_data["refresh_token"]
     data = {
         "grant_type": "refresh_token",
         "refresh_token": refresh_token
     }
 
-    credentials = f"{env_var["CLIENT_ID"]}:{env_var["CLIENT_SECRET"]}"
+    credentials = f"{os.environ.get('CLIENT_ID')}:{os.environ.get('CLIENT_SECRET')}"
     encoded = base64.b64encode(credentials.encode()).decode()
     headers = {"Authorization": f"Basic {encoded}"}
 

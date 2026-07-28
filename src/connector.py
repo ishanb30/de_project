@@ -1,37 +1,34 @@
 """
 connector.py - Connects to Snowflake warehouse, database, and schema based
-on credentials stored in .env.
+on credentials read from the process environment.
 
 Assumptions:
-    1. .env exists at the project root - path resolved relative to
-        utils/paths.py, not the working directory
+    1. The required variables are already present in the process environment -
+       written there by load_dotenv from .env when running locally, or by the
+       workflow env: block from repository secrets when running in CI.
+       Presence is validated up front by _check_env_vars in run.py, so this
+       module does not re-check them
 
-    2. The six .env variable names are the exhaustive set - adding new ones
-       requires updating var_names
-
-    3. Credentials are valid at the time of the call - no retry on auth
+    2. Credentials are valid at the time of the call - no retry on auth
        failure, no credential rotation handling
 
-    4. Caller is responsible for closing the connection - no pooling, no
+    3. Caller is responsible for closing the connection - no pooling, no
        reuse, no automatic cleanup unless caller uses with
 
-    5. Any errors propagate naturally and are handled by the callers
+    4. Any errors propagate naturally and are handled by the callers
 """
 
 import snowflake.connector
-from utils.helpers import _load_env
+import os
 
 def get_connection() -> snowflake.connector.SnowflakeConnection:
-    var_names = ["ACCOUNT_IDENTIFIER", "USERNAME", "PASSWORD", "DATA_WAREHOUSE", "DATABASE", "SCHEMA"]
-    env_var = _load_env(var_names)
-
     connection = snowflake.connector.connect(
-        account=env_var["ACCOUNT_IDENTIFIER"],
-        user=env_var["USERNAME"],
-        password=env_var["PASSWORD"],
-        warehouse=env_var["DATA_WAREHOUSE"],
-        database=env_var["DATABASE"],
-        schema=env_var["SCHEMA"],
+        account=os.environ.get("ACCOUNT_IDENTIFIER"),
+        user=os.environ.get("USERNAME"),
+        password=os.environ.get("PASSWORD"),
+        warehouse=os.environ.get("DATA_WAREHOUSE"),
+        database=os.environ.get("DATABASE"),
+        schema=os.environ.get("SCHEMA"),
         autocommit=False
     )
 

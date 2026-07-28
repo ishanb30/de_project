@@ -4,6 +4,12 @@ run.py - orchestrates each pipeline run
 Assumptions:
     1. The table PIPELINE_RUNS exists to be written to
 
+    2. Required credentials are present in the process environment - written
+       there by load_dotenv from .env locally, or by the workflow env: block
+       from repository secrets in CI. _check_env_vars validates all of them
+       before any connection is opened or any row is written, and callers
+       read os.environ directly rather than being passed the values
+
 Known Limitations:
     1. If the UPDATE query in the main except block in run_pipeline fails,
        then RUN_STATUS will not be updated to FAILED in PIPELINE_RUNS.
@@ -19,6 +25,35 @@ from src.fetch import get_api_data
 from utils.logging import get_logger
 from src.connector import get_connection
 from datetime import datetime, timezone
+from dotenv import load_dotenv
+import os
+from utils.paths import ENV_PATH
+
+def _check_env_vars() -> None:
+    """Validates all required env vars are present in the process environment,
+    raising ValueError listing any that are missing."""
+    var_names = [
+        "CLIENT_ID",
+        "CLIENT_SECRET",
+        "ACCOUNT_IDENTIFIER",
+        "USERNAME",
+        "PASSWORD",
+        "DATA_WAREHOUSE",
+        "DATABASE",
+        "SCHEMA"
+    ]
+
+    load_dotenv(ENV_PATH)
+
+    missing_vars = []
+    for var in var_names:
+        var_value = os.environ.get(var)
+        if var_value is None:
+            missing_vars.append(var)
+
+    if missing_vars:
+        raise ValueError(f"Variable name ({missing_vars}) not set in environment "
+                         "(expected from .env locally or repo secrets in CI)")
 
 def _insert_pipeline_run(cursor, run_id: str, run_status: str):
     """Inserts run_id and run_status into PIPELINE_RUNS"""
@@ -48,6 +83,7 @@ def run_pipeline(run_id: str, logger) -> None:
     run_status = "STARTED"
 
     try:
+        _check_env_vars()
         with get_connection() as conn:
             with conn.cursor() as cursor:
                 _insert_pipeline_run(cursor, run_id, run_status)
