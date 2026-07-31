@@ -15,8 +15,8 @@ Assumptions:
        context.
 
     4. The Retry-After header, when present on a 429 response, is assumed to
-       be a parseable numeric string (e.g. "30" or "1.5"). If absent, falls
-       back to exponential backoff.
+       be a parseable numeric string (e.g. "30" or "1.5"). If absent or a
+       non-numeric string is received, falls back to exponential backoff.
 """
 
 import requests
@@ -133,6 +133,7 @@ def get_api_data(run_id: str, max_retries: int=3) -> list:
     logger.debug(f"after parameter used: {watermark_with_lookback}")
 
     last_exception = None
+    remaining_sleep_budget = 3600
     for i in range(max_retries + 1):
         try:
             response = requests.get(
@@ -170,10 +171,20 @@ def get_api_data(run_id: str, max_retries: int=3) -> list:
                 logger.warning(f"Server error (5xx) on attempt {i + 1}: {last_exception}")
 
             elif response.status_code == 429:
-                wait = float(response.headers.get("Retry-After") or 2 ** (i + 1))
-                time.sleep(wait)
-                last_exception = e
-                logger.warning(f"Rate limited (429) on attempt {i + 1}: {last_exception}")
+                try:
+                    wait = float(response.headers.get("Retry-After") or 2 ** (i + 1))
+                except ValueError:
+                    wait = 2 ** (i + 1)
+
+                if wait < remaining_sleep_budget:
+                    remaining_sleep_budget = remaining_sleep_budget - wait
+                    time.sleep(wait)
+                    last_exception = e
+                    logger.warning(f"Rate limited (429) on attempt {i + 1}: {last_exception}")
+
+                else:
+                    raise RuntimeError(f"Rate limited (429) on attempt {i + 1}. No more retries "
+                                   f"attempted due to excessive sleep time: {last_exception}") from e
 
             else:
                 raise RuntimeError(f"Get request failed with status code: {response.status_code}") from e
