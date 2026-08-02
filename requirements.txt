@@ -1,0 +1,4 @@
+requests
+python-dotenv
+snowflake-connector-python
+dbt-snowflake

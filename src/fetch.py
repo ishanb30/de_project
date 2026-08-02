@@ -68,7 +68,7 @@ def _get_last_watermark(run_id: str, max_retries: int=3) -> int | None:
             with get_connection() as conn:
                 with conn.cursor() as cursor:
                     cursor.execute(
-                        "SELECT WATERMARK_TIMESTAMP FROM SPOTIFY_PIPELINE.RAW.PIPELINE_RUNS "
+                        "SELECT WATERMARK_TIMESTAMP FROM SPOTIFY_PIPELINE.METADATA.PIPELINE_RUNS "
                         "WHERE RUN_STATUS = 'COMPLETED' AND WATERMARK_TIMESTAMP IS NOT NULL "
                         "ORDER BY WATERMARK_TIMESTAMP DESC LIMIT 1"
                     )

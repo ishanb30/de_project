@@ -39,8 +39,7 @@ def _check_env_vars() -> None:
         "USERNAME",
         "PASSWORD",
         "DATA_WAREHOUSE",
-        "DATABASE",
-        "SCHEMA"
+        "DATABASE"
     ]
 
     load_dotenv(ENV_PATH)
@@ -60,7 +59,7 @@ def _insert_pipeline_run(cursor, run_id: str, run_status: str):
     run_start = datetime.now(timezone.utc)
 
     cursor.execute(
-        "INSERT INTO SPOTIFY_PIPELINE.RAW.PIPELINE_RUNS (RUN_ID, RUN_START, RUN_STATUS) "
+        "INSERT INTO SPOTIFY_PIPELINE.METADATA.PIPELINE_RUNS (RUN_ID, RUN_START, RUN_STATUS) "
         "VALUES (%s, %s, %s)",
         (run_id, run_start, run_status)
     )
@@ -72,7 +71,7 @@ def _update_pipeline_run(
     run_end = datetime.now(timezone.utc)
 
     cursor.execute(
-        "UPDATE SPOTIFY_PIPELINE.RAW.PIPELINE_RUNS "
+        "UPDATE SPOTIFY_PIPELINE.METADATA.PIPELINE_RUNS "
         "SET RUN_END = %s, WATERMARK_TIMESTAMP = %s, RUN_STATUS = %s "
         "WHERE RUN_ID = %s",
         (run_end, watermark, run_status, run_id)

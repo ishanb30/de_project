@@ -28,7 +28,6 @@ def get_connection() -> snowflake.connector.SnowflakeConnection:
         password=os.environ.get("PASSWORD"),
         warehouse=os.environ.get("DATA_WAREHOUSE"),
         database=os.environ.get("DATABASE"),
-        schema=os.environ.get("SCHEMA"),
         autocommit=False
     )
 
