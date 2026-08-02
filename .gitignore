@@ -4,4 +4,5 @@ target/
 dbt_packages/                                                                                          
 logs/
 *.log
-src/tokens.json 
+src/tokens.json
+__pycache__/
