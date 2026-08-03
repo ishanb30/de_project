@@ -20,12 +20,22 @@ Assumptions:
 
 import snowflake.connector
 import os
+from cryptography.hazmat.primitives import serialization
 
 def get_connection() -> snowflake.connector.SnowflakeConnection:
+    private_key = os.environ.get("PRIVATE_KEY")
+    key_object = serialization.load_pem_private_key(private_key.encode("utf8"), password=None)
+    p8_der_bytes = key_object.private_bytes(
+        encoding=serialization.Encoding.DER,
+        format=serialization.PrivateFormat.PKCS8,
+        encryption_algorithm=serialization.NoEncryption()
+    )
+
     connection = snowflake.connector.connect(
         account=os.environ.get("ACCOUNT_IDENTIFIER"),
         user=os.environ.get("USERNAME"),
-        password=os.environ.get("PASSWORD"),
+        role=os.environ.get("ROLE"),
+        private_key=p8_der_bytes,
         warehouse=os.environ.get("DATA_WAREHOUSE"),
         database=os.environ.get("DATABASE"),
         autocommit=False

@@ -37,7 +37,8 @@ def _check_env_vars() -> None:
         "CLIENT_SECRET",
         "ACCOUNT_IDENTIFIER",
         "USERNAME",
-        "PASSWORD",
+        "ROLE",
+        "PRIVATE_KEY",
         "DATA_WAREHOUSE",
         "DATABASE"
     ]
