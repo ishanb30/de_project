@@ -29,7 +29,7 @@ def load(run_id: str, data: list, max_retries: int=3) -> str | None:
                     with conn.cursor() as cursor:
                         for d in data:
                             cursor.execute(
-                                "INSERT INTO RECENTLY_PLAYED (RAW_DATA, RUN_ID) "
+                                "INSERT INTO SPOTIFY_PIPELINE.RAW.RECENTLY_PLAYED (RAW_DATA, RUN_ID) "
                                 "SELECT PARSE_JSON(%s), %s",
                                 (json.dumps(d), run_id)
                             )
