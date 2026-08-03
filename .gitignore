@@ -6,3 +6,4 @@ logs/
 *.log
 src/tokens.json
 __pycache__/
+rsa_key.*
