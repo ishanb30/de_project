@@ -1,4 +1,13 @@
-
+/*
+Assumptions:
+    - Refresh token insertion into AUTH.TOKENS is a manual, one-time-per-token
+      process, not part of the pipeline - Spotify's OAuth consent screen
+      requires a human in a browser, so this step can never be automated.
+      Before the first pipeline run (and again after each re-auth, roughly
+      every 180 days, prompted by a watchdog alert at ~160 days), run auth.py
+      to obtain a fresh refresh token, then insert it here with ISSUE_DATE
+      set to the actual moment it was issued.
+*/
 CREATE DATABASE IF NOT EXISTS SPOTIFY_PIPELINE;
 
 CREATE SCHEMA IF NOT EXISTS SPOTIFY_PIPELINE.RAW;
