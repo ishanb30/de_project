@@ -65,6 +65,16 @@ def _insert_pipeline_run(cursor, run_id: str, run_status: str):
         (run_id, run_start, run_status)
     )
 
+def _get_refresh_token(cursor) -> str:
+    cursor.execute("SELECT REFRESH_TOKEN FROM SPOTIFY_PIPELINE.AUTH.TOKENS")
+    row = cursor.fetchone()
+
+    if row is not None:
+        refresh_token = row[0]
+        return refresh_token
+    else:
+        raise RuntimeError("Missing refresh token from AUTH.TOKENS table")
+
 def _update_pipeline_run(
         cursor, run_id: str, run_status: str, watermark: datetime | None = None
 ) -> None:
@@ -89,8 +99,10 @@ def run_pipeline(run_id: str, logger) -> None:
                 _insert_pipeline_run(cursor, run_id, run_status)
                 conn.commit()
 
+                refresh_token = _get_refresh_token(cursor)
+
                 logger.info("Starting the process to fetch data from API...")
-                data = get_api_data(run_id)
+                data = get_api_data(run_id, refresh_token)
                 logger.info("Loading data to Snowflake...")
                 watermark = load(run_id, data)
 

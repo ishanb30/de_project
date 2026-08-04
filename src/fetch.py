@@ -122,10 +122,10 @@ def _get_lookback_window_mins(run_id: str) -> int:
     except KeyError as e:
         raise RuntimeError("Missing key: either vars or lookback_window_mins") from e
 
-def get_api_data(run_id: str, max_retries: int=3) -> list:
+def get_api_data(run_id: str, refresh_token: str, max_retries: int=3) -> list:
     logger = get_logger(__name__, run_id)
 
-    headers = get_auth_headers(run_id)
+    headers = get_auth_headers(run_id, refresh_token)
 
     watermark = _get_last_watermark(run_id)
     lookback_window_mins = _get_lookback_window_mins(run_id)
