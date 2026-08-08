@@ -22,7 +22,7 @@ with new_rows as (
         raw_data:context:type::varchar(15) as context_type
 
     from
-        {{ source("raw", "RECENTLY_PLAYED") }}
+        {{ source("spotify_api", "RECENTLY_PLAYED") }}
 
     {% if is_incremental() %}
     where
