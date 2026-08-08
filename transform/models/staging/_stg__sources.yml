@@ -1,13 +1,9 @@
 
 sources:
-  - name: raw
+  - name: spotify_api
     database: SPOTIFY_PIPELINE
     schema: RAW
     tables:
       - name: RECENTLY_PLAYED
-        config:
-          freshness:
-            warn_after: {count: 125, period: minute}
-            error_after: {count: 245, period: minute}
-            loaded_at_field: LOADED_AT
+
 
