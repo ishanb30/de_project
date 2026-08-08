@@ -106,13 +106,8 @@ def run_pipeline(run_id: str, logger) -> None:
                 logger.info("Loading data to Snowflake...")
                 watermark = load(run_id, data)
 
-                if watermark:
-                    # logger.info("Transforming data...)
-                    # TODO: trigger dbt transformation layer
-                    pass
-
-                else:
-                    logger.info("Pipeline exited early - transformation layer skipped")
+                # logger.info("Transforming data...")
+                # TODO: trigger dbt transformation layer
 
                 try:
                     run_status = "COMPLETED"
