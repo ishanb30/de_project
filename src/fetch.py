@@ -88,6 +88,7 @@ def _get_last_watermark(run_id: str, max_retries: int=3) -> datetime | None:
 
                     else:
                         logger.info("No previous watermark found - full fetch")
+                        return None
 
         except snowflake.connector.errors.OperationalError as e:
             delay_retry(i)
