@@ -3,7 +3,6 @@ fetch.py — Fetches recently played tracks from the Spotify Web API
 
 Assumptions:
     1. Valid auth headers are passed in by the caller (via token_manager).
-       The script also assumes write permissions on the /src directory.
 
     2. The Spotify API returns a JSON object (dict) at the top level. If the
        response cannot be parsed or is not a dict, a RuntimeError is raised
@@ -29,6 +28,13 @@ from src.connector import get_connection
 import snowflake.connector
 import yaml
 from utils.paths import DBT_DIR
+from datetime import datetime, timezone, timedelta
+
+def _validate_watermark(watermark: datetime) -> None:
+    now = datetime.now(timezone.utc)
+    if watermark > now:
+        raise RuntimeError("Corrupted watermark: watermark is ahead of current time "
+                           f"by {watermark - now}")
 
 def _validate_recently_played(response: requests.Response) -> dict:
     try:
@@ -59,7 +65,7 @@ def _validate_recently_played(response: requests.Response) -> dict:
 
     return data
 
-def _get_last_watermark(run_id: str, max_retries: int=3) -> int | None:
+def _get_last_watermark(run_id: str, max_retries: int=3) -> datetime | None:
     logger = get_logger(__name__, run_id)
 
     last_exception = None
@@ -75,13 +81,13 @@ def _get_last_watermark(run_id: str, max_retries: int=3) -> int | None:
 
                     data = cursor.fetchone()
                     if data:
-                        unix_seconds = data[0].timestamp()
-                        watermark = int(unix_seconds * 1000)
+                        watermark = data[0]
+                        _validate_watermark(watermark)
                         logger.info(f"Last watermark: {watermark}")
                         return watermark
+
                     else:
                         logger.info("No previous watermark found - full fetch")
-                        return None
 
         except snowflake.connector.errors.OperationalError as e:
             delay_retry(i)
@@ -129,8 +135,12 @@ def get_api_data(run_id: str, refresh_token: str, max_retries: int=3) -> list:
 
     watermark = _get_last_watermark(run_id)
     lookback_window_mins = _get_lookback_window_mins(run_id)
-    watermark_with_lookback = watermark - (lookback_window_mins * 60 * 1000) if watermark else None
-    logger.debug(f"after parameter used: {watermark_with_lookback}")
+
+    after = None
+    if watermark:
+        watermark_with_lookback = watermark - timedelta(minutes=lookback_window_mins)
+        after = int(watermark_with_lookback.timestamp() * 1000)
+        logger.debug(f"after parameter used (pre-conversion): {watermark_with_lookback}")
 
     last_exception = None
     remaining_sleep_budget = 3600
@@ -139,7 +149,7 @@ def get_api_data(run_id: str, refresh_token: str, max_retries: int=3) -> list:
             response = requests.get(
                 "https://api.spotify.com/v1/me/player/recently-played",
                 headers=headers,
-                params={"after": watermark_with_lookback,"limit": 50} if watermark else {"limit": 50},
+                params={"after": after,"limit": 50} if after else {"limit": 50},
                 timeout=5
             )
 
