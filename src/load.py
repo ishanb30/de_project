@@ -5,8 +5,9 @@ Assumptions:
     1. get_api_data() either returns an empty list or a list of dicts
     2. RECENTLY_PLAYED table exists in the schema configured in .env with
        a RAW_DATA VARIANT column
-    3. An empty list is an expected state, not an error — load() returns
-       None without opening a connection
+    3. Zero rows loaded is highly unlikely, because the lookback guarantees
+       the watermark row returns. The only way zero rows occurs is if the API
+       response is empty or there's a parsing error
 """
 
 from src.connector import get_connection
@@ -18,7 +19,7 @@ from src.fetch import get_api_data
 from utils.logging import get_logger
 from datetime import datetime
 
-def load(run_id: str, data: list, max_retries: int=3) -> str | None:
+def load(run_id: str, data: list, max_retries: int=3) -> datetime:
     logger = get_logger(__name__, run_id)
 
     if data:
@@ -70,8 +71,8 @@ def load(run_id: str, data: list, max_retries: int=3) -> str | None:
         return watermark
 
     else:
-        logger.info(f"Load skipped due to 0 play events")
-        return None
+        raise RuntimeError("Zero play events returned - the lookback window guarantees at least the "
+                           "watermark row, so the API returned nothing or parsing dropped the rows")
 
 
 if __name__ == "__main__":
