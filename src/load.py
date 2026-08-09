@@ -67,7 +67,7 @@ def load(run_id: str, data: list, max_retries: int=3) -> datetime:
 
         logger.info(f"Load completed with {len(data)} play events")
 
-        watermark = datetime.fromisoformat(max([d["played_at"] for d in data]))
+        watermark = max(datetime.fromisoformat([d["played_at"] for d in data]))
         return watermark
 
     else:
