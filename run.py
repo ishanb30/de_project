@@ -28,6 +28,7 @@ from datetime import datetime, timezone
 from dotenv import load_dotenv
 import os
 from utils.paths import ENV_PATH
+import requests
 
 def _check_env_vars() -> None:
     """Validates all required env vars are present in the process environment,
@@ -48,7 +49,7 @@ def _check_env_vars() -> None:
     missing_vars = []
     for var in var_names:
         var_value = os.environ.get(var)
-        if var_value is None:
+        if not var_value:
             missing_vars.append(var)
 
     if missing_vars:
@@ -74,6 +75,24 @@ def _get_refresh_token(cursor) -> str:
         return refresh_token
     else:
         raise RuntimeError("Missing refresh token from AUTH.TOKENS table")
+
+def _send_heartbeat_ping(logger) -> None:
+    """Pings the heartbeat URL to signal successful ingestion. Never raises."""
+    try:
+        heartbeat_url = os.environ.get("HEARTBEAT_URL")
+        if not heartbeat_url:
+            logger.warning(
+                "HEARTBEAT_URL not set - heartbeat ping skipped. "
+                "Set it in .env locally or as a repo secret in CI"
+            )
+            return
+
+        response = requests.get(heartbeat_url, timeout=5)
+        response.raise_for_status()
+        logger.info(f"Heartbeat ping sent (HTTP {response.status_code})")
+
+    except Exception as e:
+        logger.warning(f"Heartbeat ping failed: {e}")
 
 def _update_pipeline_run(
         cursor, run_id: str, run_status: str, watermark: datetime | None = None
@@ -105,6 +124,8 @@ def run_pipeline(run_id: str, logger) -> None:
                 data = get_api_data(run_id, refresh_token)
                 logger.info("Loading data to Snowflake...")
                 watermark = load(run_id, data)
+
+                _send_heartbeat_ping(logger)
 
                 # logger.info("Transforming data...")
                 # TODO: trigger dbt transformation layer

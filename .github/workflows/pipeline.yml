@@ -23,6 +23,7 @@ jobs:
           USERNAME: ${{ secrets.USERNAME }}
           PRIVATE_KEY: ${{ secrets.PRIVATE_KEY }}
           ROLE: 'SPOTIFY_PIPELINE_ROLE'
+          HEARTBEAT_URL: ${{ secrets.HEARTBEAT_URL }}
           DATA_WAREHOUSE: 'COMPUTE_WH'
           DATABASE: 'SPOTIFY_PIPELINE'
 concurrency:
