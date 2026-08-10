@@ -19,6 +19,10 @@ from src.fetch import get_api_data
 from utils.logging import get_logger
 from datetime import datetime
 
+def _compute_watermark(data: list) -> datetime:
+    watermark = max([datetime.fromisoformat(d["played_at"]) for d in data])
+    return watermark
+
 def load(run_id: str, data: list, max_retries: int=3) -> datetime:
     logger = get_logger(__name__, run_id)
 
@@ -67,7 +71,7 @@ def load(run_id: str, data: list, max_retries: int=3) -> datetime:
 
         logger.info(f"Load completed with {len(data)} play events")
 
-        watermark = max([datetime.fromisoformat(d["played_at"]) for d in data])
+        watermark = _compute_watermark(data)
         return watermark
 
     else:
