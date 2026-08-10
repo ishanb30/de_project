@@ -1,0 +1,7 @@
+# Local development only - CI installs requirements.txt, which stays lean.
+-r requirements.txt
+
+iniconfig==2.3.0
+pluggy==1.6.0
+Pygments==2.20.0
+pytest==9.1.1
