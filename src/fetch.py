@@ -29,6 +29,7 @@ import snowflake.connector
 import yaml
 from utils.paths import DBT_DIR
 from datetime import datetime, timezone, timedelta
+from typing import Any
 
 def _validate_watermark(watermark: datetime) -> None:
     now = datetime.now(timezone.utc)
@@ -36,13 +37,7 @@ def _validate_watermark(watermark: datetime) -> None:
         raise RuntimeError("Corrupted watermark: watermark is ahead of current time "
                            f"by {watermark - now}")
 
-def _validate_recently_played(response: requests.Response) -> dict:
-    try:
-        data = response.json()
-
-    except requests.exceptions.JSONDecodeError as e:
-        raise RuntimeError("Malformed JSON response - cannot be parsed") from e
-
+def _validate_recently_played(data: Any) -> None:
     if not isinstance(data, dict):
         raise RuntimeError("JSON response is not a dict - cannot be validated")
 
@@ -50,7 +45,7 @@ def _validate_recently_played(response: requests.Response) -> dict:
         raise RuntimeError("Required key (items) missing from Spotify response")
 
     if not data["items"]:
-        return data
+        return
 
     items = data["items"]
     required = ["track", "played_at", "context"]
@@ -62,8 +57,6 @@ def _validate_recently_played(response: requests.Response) -> dict:
             elif key in non_null:
                 if not item[key]:
                     raise ValueError(f"Missing data from {key}")
-
-    return data
 
 def _get_last_watermark(run_id: str, max_retries: int=3) -> datetime | None:
     logger = get_logger(__name__, run_id)
@@ -163,7 +156,8 @@ def get_api_data(run_id: str, refresh_token: str, max_retries: int=3) -> list:
             )
 
             response.raise_for_status()
-            data = _validate_recently_played(response)
+            data = response.json()
+            _validate_recently_played(data)
 
             items = data["items"]
             if items:
@@ -172,6 +166,9 @@ def get_api_data(run_id: str, refresh_token: str, max_retries: int=3) -> list:
             else:
                 logger.info("items is empty - no tracks listened to recently")
                 return items
+
+        except requests.exceptions.JSONDecodeError as e:
+            raise RuntimeError("Malformed JSON response - cannot be parsed") from e
 
         except requests.exceptions.ConnectionError as e:
             delay_retry(i)
