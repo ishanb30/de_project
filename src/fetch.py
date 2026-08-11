@@ -129,6 +129,19 @@ def _get_lookback_window_mins(run_id: str) -> int:
     except KeyError as e:
         raise RuntimeError("Missing key: either vars or lookback_window_mins") from e
 
+def _convert_watermark_to_epoch_ms(
+        run_id: str, watermark: datetime | None, lookback_window_mins: int
+) -> int | None:
+    logger = get_logger(__name__, run_id)
+
+    after = None
+    if watermark:
+        watermark_with_lookback = watermark - timedelta(minutes=lookback_window_mins)
+        after = int(watermark_with_lookback.timestamp() * 1000)
+        logger.debug(f"after parameter used (pre-conversion): {watermark_with_lookback}")
+
+    return after
+
 def get_api_data(run_id: str, refresh_token: str, max_retries: int=3) -> list:
     logger = get_logger(__name__, run_id)
 
@@ -136,12 +149,7 @@ def get_api_data(run_id: str, refresh_token: str, max_retries: int=3) -> list:
 
     watermark = _get_last_watermark(run_id)
     lookback_window_mins = _get_lookback_window_mins(run_id)
-
-    after = None
-    if watermark:
-        watermark_with_lookback = watermark - timedelta(minutes=lookback_window_mins)
-        after = int(watermark_with_lookback.timestamp() * 1000)
-        logger.debug(f"after parameter used (pre-conversion): {watermark_with_lookback}")
+    after = _convert_watermark_to_epoch_ms(run_id, watermark, lookback_window_mins)
 
     last_exception = None
     remaining_sleep_budget = 3600
