@@ -83,7 +83,7 @@ def _get_last_watermark(run_id: str, max_retries: int=3) -> datetime | None:
                     if data:
                         watermark = data[0]
                         _validate_watermark(watermark)
-                        logger.info(f"Last watermark: {watermark}")
+                        logger.info(f"Last watermark (UTC): {watermark}")
                         return watermark
 
                     else:
