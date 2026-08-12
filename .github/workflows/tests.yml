@@ -1,0 +1,14 @@
+
+name: "Spotify Pipeline Test Suite"
+on: push
+jobs:
+  spotify_pipeline_test_suite:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12.5'
+      - run: pip install -r requirements-dev.txt
+      - run: python -m pytest

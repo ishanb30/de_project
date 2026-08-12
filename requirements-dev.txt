@@ -1,4 +1,4 @@
-# Local development only - CI installs requirements.txt, which stays lean.
+# CI installs requirements.txt for the pipeline and requirements-dev.txt for the test suite.
 -r requirements.txt
 
 iniconfig==2.3.0
