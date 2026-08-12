@@ -42,7 +42,7 @@ def _validate_recently_played(data: Any) -> None:
         raise RuntimeError("JSON response is not a dict - cannot be validated")
 
     if "items" not in data:
-        raise RuntimeError("Required key (items) missing from Spotify response")
+        raise RuntimeError("Required top-level key (items) missing from Spotify response")
 
     if not data["items"]:
         return
