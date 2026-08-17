@@ -53,7 +53,7 @@ def _check_env_vars() -> None:
             missing_vars.append(var)
 
     if missing_vars:
-        raise ValueError(f"Variable name ({missing_vars}) not set in environment "
+        raise ValueError(f"Variable name(s) ({missing_vars}) not set in environment "
                          "(expected from .env locally or repo secrets in CI)")
 
 def _insert_pipeline_run(cursor, run_id: str, run_status: str):
