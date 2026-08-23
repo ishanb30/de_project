@@ -27,8 +27,9 @@ from src.connector import get_connection
 from datetime import datetime, timezone
 from dotenv import load_dotenv
 import os
-from utils.paths import ENV_PATH
+from utils.paths import ENV_PATH, DBT_DIR
 import requests
+import subprocess
 
 def _check_env_vars() -> None:
     """Validates all required env vars are present in the process environment,
@@ -94,6 +95,13 @@ def _send_heartbeat_ping(logger) -> None:
     except Exception as e:
         logger.warning(f"Heartbeat ping failed: {e}")
 
+def run_dbt_build() -> None:
+    subprocess.run(
+        ["dbt", "build", "--profiles-dir", "..", "--target", "dbt_subprocess"],
+        cwd=DBT_DIR,
+        check=True,
+    )
+
 def _update_pipeline_run(
         cursor, run_id: str, run_status: str, watermark: datetime | None = None
 ) -> None:
@@ -127,8 +135,8 @@ def run_pipeline(run_id: str, logger) -> None:
 
                 _send_heartbeat_ping(logger)
 
-                # logger.info("Transforming data...")
-                # TODO: trigger dbt transformation layer
+                logger.info("Starting dbt build process...")
+                run_dbt_build()
 
                 try:
                     run_status = "COMPLETED"
