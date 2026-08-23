@@ -33,7 +33,7 @@ def get_connection() -> snowflake.connector.SnowflakeConnection:
 
     connection = snowflake.connector.connect(
         account=os.environ.get("ACCOUNT_IDENTIFIER"),
-        user=os.environ.get("USERNAME"),
+        user=os.environ.get("SNOWFLAKE_USER"),
         role=os.environ.get("ROLE"),
         private_key=p8_der_bytes,
         warehouse=os.environ.get("DATA_WAREHOUSE"),

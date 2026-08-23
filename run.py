@@ -37,7 +37,7 @@ def _check_env_vars() -> None:
         "CLIENT_ID",
         "CLIENT_SECRET",
         "ACCOUNT_IDENTIFIER",
-        "USERNAME",
+        "SNOWFLAKE_USER",
         "ROLE",
         "PRIVATE_KEY",
         "DATA_WAREHOUSE",

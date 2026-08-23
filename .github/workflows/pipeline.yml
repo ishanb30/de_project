@@ -20,7 +20,7 @@ jobs:
           CLIENT_ID: ${{ secrets.CLIENT_ID }}
           CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
           ACCOUNT_IDENTIFIER: ${{ secrets.ACCOUNT_IDENTIFIER }}
-          USERNAME: ${{ secrets.USERNAME }}
+          SNOWFLAKE_USER: ${{ secrets.SNOWFLAKE_USER }}
           PRIVATE_KEY: ${{ secrets.PRIVATE_KEY }}
           ROLE: 'SPOTIFY_PIPELINE_ROLE'
           HEARTBEAT_URL: ${{ secrets.HEARTBEAT_URL }}
