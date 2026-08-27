@@ -19,7 +19,8 @@ with new_rows as (
         raw_data:track:name::varchar as track_name,
         raw_data:track:track_number::int as track_number,
         raw_data:track:uri::varchar as track_uri,
-        raw_data:context:type::varchar(15) as context_type
+        raw_data:context:type::varchar(15) as context_type,
+        loaded_at
 
     from
         {{ source("spotify_api", "RECENTLY_PLAYED") }}
@@ -32,7 +33,7 @@ with new_rows as (
 , deduplication as (
     select
         *,
-        row_number() over (partition by played_at order by played_at) as rn
+        row_number() over (partition by played_at order by loaded_at desc) as rn
     from
         new_rows
 )
