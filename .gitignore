@@ -7,3 +7,5 @@ logs/
 src/tokens.json
 __pycache__/
 rsa_key.*
+.user.yml
+.claude/
