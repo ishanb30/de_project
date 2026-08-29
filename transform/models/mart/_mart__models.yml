@@ -2,13 +2,17 @@
 models:
   - name: fct_play_events
     description: >
-      One row per play event (grain: played_at). Records a single track play,
-      with foreign keys to dim_track and dim_album
+      One row per play event and track id (grain: play_event_key). Records 
+      a single track play, with foreign keys to dim_track and dim_album
     columns:
+      - name: play_event_key
+        tests:
+          - unique
+          - not_null
+        description: "{{ doc('play_event_key') }}"
       - name: played_at
         description: "{{ doc('played_at') }}"
         tests:
-          - unique
           - not_null
 
       - name: album_id

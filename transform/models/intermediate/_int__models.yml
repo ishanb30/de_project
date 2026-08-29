@@ -6,6 +6,8 @@ models:
       album_* columns, and keeps track_artists and album_artists as VARIANT
       arrays for downstream flattening into the bridge tables and dim_artist
     columns:
+      - name: play_event_key
+        description: "{{ doc('play_event_key') }}"
       - name: played_at
         description: "{{ doc('played_at') }}"
       - name: track_id

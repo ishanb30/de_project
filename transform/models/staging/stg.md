@@ -1,7 +1,12 @@
 
+{% docs play_event_key %}
+Composite key constructed with played_at and track_id. This is the 
+grain of the play-event models
+{% enddocs %}
+
 {% docs played_at %}
 The UTC timestamp at which the track finished playing. Sourced from
-Spotify's `played_at` field. This is the grain of the play-event models
+Spotify's `played_at` field. 
 {% enddocs %}
 
 

@@ -5,12 +5,16 @@ models:
       Parsing fields out of the RAW_DATA (JSOn object) column from RECENTLY_PLAYED
       table into scalar track_* columns, and keeps track_album and track_artists 
       to be flattened downstream. Deduplication being enforced means one row
-      per play event (grain: played_at)
+      per play event and track id (grain: play_event_key)
 
     columns:
-      - name: played_at
+      - name: play_event_key
         tests:
           - unique
+          - not_null
+        description: "{{ doc('play_event_key') }}"
+      - name: played_at
+        tests:
           - not_null
         description: "{{ doc('played_at') }}"
       - name: track_id

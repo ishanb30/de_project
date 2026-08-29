@@ -1,5 +1,6 @@
 
 select
+    play_event_key,
     played_at,
     album_id,
     track_id,

@@ -3,7 +3,7 @@
     config(
         materialized="incremental",
         incremental_strategy="merge",
-        unique_key="played_at"
+        unique_key="play_event_key"
     )
 }}
 
@@ -30,15 +30,23 @@ with new_rows as (
         played_at > (select max(played_at) - interval '{{ var('lookback_window_mins') }} minutes' from {{ this }})
     {% endif %}
 )
-, deduplication as (
+, create_composite_key as (
     select
-        *,
-        row_number() over (partition by played_at order by loaded_at desc) as rn
+        {{ dbt_utils.generate_surrogate_key(["played_at", "track_id"]) }} as play_event_key,
+        *
     from
         new_rows
 )
+, deduplication as (
+    select
+        *,
+        row_number() over (partition by play_event_key order by loaded_at desc) as rn
+    from
+        create_composite_key
+)
 
 select
+    play_event_key,
     played_at,
     track_id,
     track_album,
