@@ -70,6 +70,18 @@ and `track_id`. Nothing in `RAW` distinguishes the same track genuinely played t
 batch from the same single play fetched twice by the lookback, so the pair collapses to one row.
 The same track played at a different `played_at` is a different key and is unaffected.
 
+### Dimension policy
+
+The dimensions are **SCD1**: one row per natural key — `track_id`, `album_id`, and the artist id
+flattened out of `track_artists` — holding
+the most recently observed attributes, with earlier versions overwritten rather than versioned. Each
+dim resolves this with a `QUALIFY row_number() ... order by played_at desc`. History is deliberately
+not kept — nothing here needs to answer "what did this look like at the time", and SCD2 would cost
+a validity range on every dimension to buy it.
+
+The `unique` test on each dim's `id` is load-bearing rather than decorative: a duplicated id fans
+out on every join from `fct_play_events` and inflates play counts silently.
+
 ---
 
 ## Repository layout
@@ -148,10 +160,12 @@ orchestrator's `try` it would write `RUN_STATUS = 'FAILED'` for a run that never
 `stg_recently_played` is incremental, so an ordinary run only merges new rows. Rebuilding it from
 all of `RAW` — required whenever the model's grain or columns change — needs `--full-refresh`.
 
-**Run it as the service user, not as yourself.** Snowflake ownership follows the role that created
-the object, and `SPOTIFY_PIPELINE_ROLE` holds only `SELECT` and `CREATE TABLE` on the dbt schemas —
-its write access to these tables comes from having created them. Rebuilding under a personal role
-transfers ownership and breaks the next scheduled run on privileges.
+**Run dbt as the service user, not as yourself — for any local build, not just this one.**
+Snowflake ownership follows the role that created the object, and `SPOTIFY_PIPELINE_ROLE` holds
+only `SELECT`, `CREATE TABLE` and `CREATE VIEW` on the dbt schemas; its write access to these
+objects comes from having created them. The intermediate views and mart tables are rebuilt with
+`CREATE OR REPLACE` on every run, so an ordinary local build on a personal profile is enough to
+transfer ownership and leave the next scheduled run unable to replace them.
 
 From inside `transform/`:
 
@@ -207,10 +221,6 @@ dropping plays server-side, and an outage coinciding with a genuine quiet period
   against this, not against scheduler reliability.
 - **GitHub Actions scheduling is materially unreliable** — measured 60–100 minute delays, silently
   skipped slots, and runner-acquisition failures that produce no logs. Delay does not compound.
-- **The dimension models are neither SCD1 nor SCD2.** They are `select distinct` over every
-  column rather than over the id, so an attribute changing upstream would leave two rows sharing
-  one id. The `unique` test on `id` is what catches that, and it matters more than it looks: a
-  duplicated id fans out on every join from `fct_play_events`, inflating play counts silently.
 - **CI's write access rests on object ownership rather than grants.** See the full
   refresh procedure above.
 - **The watchdog that reconciles abandoned `STARTED` rows is designed but not built.**
