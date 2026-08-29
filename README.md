@@ -59,10 +59,11 @@ Two further schemas hold state rather than analytics: `METADATA` (`PIPELINE_RUNS
 The grain of every play-event model is **`play_event_key`**, a surrogate hash of
 `played_at` + `track_id`.
 
-`played_at` alone is **not** a valid identifier. Spotify stamps plays server-side, and plays
-buffered offline arrive as a batch sharing one timestamp — two collisions are present in `RAW`,
-each carrying two entirely different tracks. Keying on `played_at` silently discarded one play per
-collision. `played_at` and `track_id` are both retained as visible columns; the hash is the key,
+`played_at` alone is **not** a valid identifier. `RAW` contains two timestamps that each carry two
+entirely different tracks, so a `played_at` is not unique to a play. Keying on it silently discarded
+one play per collision. The cause is unconfirmed — `played_at` is assigned server-side rather than
+by the client, but what makes two plays share a value is not established, and it is clearly not
+simply "offline plays", which are common while collisions are rare. `played_at` and `track_id` are both retained as visible columns; the hash is the key,
 not a replacement for readable ones.
 
 One residual is accepted and unfixable, and it is narrow: two rows sharing **both** `played_at`
