@@ -207,22 +207,12 @@ dropping plays server-side, and an outage coinciding with a genuine quiet period
   against this, not against scheduler reliability.
 - **GitHub Actions scheduling is materially unreliable** — measured 60–100 minute delays, silently
   skipped slots, and runner-acquisition failures that produce no logs. Delay does not compound.
-- **The dimension models are neither SCD1 nor SCD2** (`DECISIONS.md` item 59). They are
-  `select distinct` over every column, so a changed attribute would produce two rows sharing one
-  id and fail the `unique` test.
-- **CI's write access rests on object ownership rather than grants** (item 60). See the full
+- **The dimension models are neither SCD1 nor SCD2.** They are `select distinct` over every
+  column rather than over the id, so an attribute changing upstream would leave two rows sharing
+  one id. The `unique` test on `id` is what catches that, and it matters more than it looks: a
+  duplicated id fans out on every join from `fct_play_events`, inflating play counts silently.
+- **CI's write access rests on object ownership rather than grants.** See the full
   refresh procedure above.
 - **The watchdog that reconciles abandoned `STARTED` rows is designed but not built.**
 - **`track_id` is release-scoped, not song-level.** ISRC is the song-level grouping lever and is
   not yet modelled.
-
----
-
-## Project documents
-
-| File | Contents |
-|---|---|
-| `CLAUDE.md` | Conventions, gotchas, and the current state of the build |
-| `DECISIONS.md` | The decision inventory — every open and closed item, with closure type |
-| `PROGRESS.md` | Session-by-session detail and rationale |
-| `HANDOFF.md` | What the next session picks up |
