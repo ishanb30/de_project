@@ -1,5 +1,5 @@
 
-select distinct
+select
     track_id as id,
     track_name as name,
     track_uri as spotify_uri,
@@ -8,4 +8,9 @@ select distinct
     track_explicit as is_explicit,
     track_disc_number as disc_number
 
-from {{ ref("int_recently_played") }}
+from
+    {{ ref("int_recently_played") }}
+qualify
+    row_number() over (
+        partition by track_id order by played_at desc
+        ) = 1
