@@ -2,9 +2,9 @@
 name: 'Spotify Pipeline'
 on:
   workflow_dispatch:
-  schedule:
-    - cron: '17 */2 * * *'
-      timezone: 'UTC'
+  #schedule:
+  #  - cron: '17 */2 * * *'
+  #    timezone: 'UTC'
 jobs:
   spotify_pipeline:
     runs-on: ubuntu-latest
