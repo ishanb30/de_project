@@ -1,0 +1,6 @@
+requests
+python-dotenv
+snowflake-connector-python
+cryptography
+PyYAML
+dbt-snowflake
