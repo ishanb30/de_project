@@ -90,8 +90,10 @@ out on every join from `fct_play_events` and inflates play counts silently.
 ```
 run.py                     Orchestrator — the only module that knows the wiring
 profiles.yml               dbt connection for CI (env_var placeholders only)
-requirements.txt           Pinned runtime dependencies
-requirements-dev.txt       Test dependencies (includes requirements.txt)
+requirements.in            Direct runtime dependencies — hand-written, 6 names
+requirements.txt           Full resolved pin set — generated, never edited
+requirements-dev.in        Direct test dependencies — hand-written
+requirements-dev.txt       Full resolved pin set for tests — generated, never edited
 src/
   auth.py                  One-off OAuth authorisation code flow
   token_manager.py         Refresh-token → access-token exchange
@@ -117,9 +119,9 @@ tests/                     pytest suite
 Requires Python 3.12.5 and a Snowflake account.
 
 ```bash
-python -m venv .venv
+uv venv --python 3.12.5
 source .venv/bin/activate
-pip install -r requirements-dev.txt
+uv pip install -r requirements-dev.txt
 cd transform && dbt deps
 ```
 
@@ -138,6 +140,49 @@ Then, in order:
 For CI, the same values are GitHub repository secrets, except `DATABASE`, `DATA_WAREHOUSE` and
 `ROLE`, which stay plain text in the workflow file — a secret is write-only, so putting
 configuration there forfeits diff, history and review.
+
+### Dependencies
+
+Four files in two pairs. You edit the `.in` files; `uv` generates the `.txt` files.
+
+| Edited by hand | Generated from it |
+|---|---|
+| `requirements.in` — 6 direct runtime packages | `requirements.txt` — 77 pins |
+| `requirements-dev.in` — `pytest`, plus `-r requirements.in` | `requirements-dev.txt` — the same 77 plus 4 |
+
+`pipeline.yml` installs `requirements.txt`; `tests.yml` installs `requirements-dev.txt`, which is a
+complete standalone list rather than a layer on top of the other.
+
+**Never edit a `.txt` by hand — the next compile discards it.** Add the package name to whichever
+`.in` it belongs to (`requirements-dev.in` for test tooling, `requirements.in` for everything else),
+then run all four commands:
+
+```bash
+uv pip compile requirements.in -o requirements.txt
+uv pip compile requirements-dev.in -o requirements-dev.txt -c requirements.txt
+uv pip install -r requirements-dev.txt
+uv pip check
+```
+
+Both compiles run every time, regardless of which file you edited. `requirements-dev.txt` is a
+complete list of all 81 pins rather than a layer on top of `requirements.txt`, and `tests.yml`
+installs only that file — so skipping the second compile after a runtime change leaves the test job
+running without the package you just added. `-c` constrains the dev resolution to the versions
+already chosen for runtime, so the two files can never disagree about a shared package.
+
+Two traps when regenerating `requirements.in` from scratch. **`dbt-snowflake` appears in no import**
+— `run_dbt_build()` shells out to the `dbt` executable, so nothing an import scan can see will
+reveal it. And a package's import name is often not its install name: `dotenv` is `python-dotenv`,
+`yaml` is `PyYAML`, `snowflake` is `snowflake-connector-python`. `importlib.metadata.packages_distributions()`
+maps one to the other.
+
+**Why the split exists.** `pip freeze` *records* rather than *resolves* — it photographs whatever is
+installed, so a venv that has drifted through months of ad-hoc installs gets written down as though
+it were a decision. That is how five mutually incompatible pins were committed here and survived
+undetected: a complete set of exact pins installs with a warning rather than a refusal, so CI stayed
+green while the graph was unsatisfiable. **Green meant pip did as it was told, not that the versions
+were compatible.** `uv pip compile` fails outright when no compatible set exists, and `uv pip check`
+verifies the installed environment afterwards. Rebuilt clean 2026-09-04: 77 packages, no conflicts.
 
 ---
 
@@ -161,27 +206,32 @@ orchestrator's `try` it would write `RUN_STATUS = 'FAILED'` for a run that never
 `stg_recently_played` is incremental, so an ordinary run only merges new rows. Rebuilding it from
 all of `RAW` — required whenever the model's grain or columns change — needs `--full-refresh`.
 
-**Run dbt as the service user, not as yourself — for any local build, not just this one.**
-Snowflake ownership follows the role that created the object, and `SPOTIFY_PIPELINE_ROLE` holds
-only `SELECT`, `CREATE TABLE` and `CREATE VIEW` on the dbt schemas; its write access to these
-objects comes from having created them. The intermediate views and mart tables are rebuilt with
-`CREATE OR REPLACE` on every run, so an ordinary local build on a personal profile is enough to
-transfer ownership and leave the next scheduled run unable to replace them.
+**Every dbt build — local or CI — must run under `SPOTIFY_PIPELINE_ROLE`. Any build, not just
+a full refresh.** Snowflake records ownership against the **role** that created an object, not the
+user, and `SPOTIFY_PIPELINE_ROLE` holds only `SELECT`, `CREATE TABLE` and `CREATE VIEW` on the dbt
+schemas — its ability to *replace* these objects comes from having created them. The intermediate
+views and mart tables are rebuilt with `CREATE OR REPLACE` on every run, so a single build under a
+different role transfers ownership, kills the grants attached to the dropped object, and leaves the
+next scheduled run unable to replace it. Nothing in a diff shows this.
 
-From inside `transform/`:
+The role, not the user, is the requirement. `~/.dbt/profiles.yml` authenticates as the personal user
+`ishanb30` but pins `role: SPOTIFY_PIPELINE_ROLE` on both its targets, so an ordinary local build is
+already safe. From inside `transform/`:
 
 ```bash
-export PRIVATE_KEY="$(cat ../rsa_key.p8)"
-export SNOWFLAKE_USER=<service user from .env>
-export ACCOUNT_IDENTIFIER=<value from .env>
-
-dbt debug --profiles-dir .. --target dbt_subprocess     # confirm the user before continuing
-dbt build --full-refresh --profiles-dir .. --target dbt_subprocess
+dbt debug                                # confirm the role before continuing
+dbt build --full-refresh
 ```
 
-`PRIVATE_KEY` is read from the key file rather than sourced from `.env`: the value there carries
-literal `\n` escapes that `python-dotenv` expands and the shell does not. The exports live in that
-shell session only.
+Verified 2026-09-02 with `SHOW TABLES` / `SHOW VIEWS`: every dbt-built object is owned by
+`SPOTIFY_PIPELINE_ROLE`. (`METADATA` and `AUTH` are owned by `ACCOUNTADMIN` — created once by
+`setup.sql` and only ever read and written, never replaced. That is where `permissions.sql` does
+real least-privilege work.)
+
+Running as the service user via `--profiles-dir .. --target dbt_subprocess` also works and is what
+CI does, but it is not required locally and costs a `PRIVATE_KEY` export — read from the key file
+rather than `.env`, whose value carries literal `\n` escapes that `python-dotenv` expands and the
+shell does not.
 
 ---
 
@@ -222,8 +272,9 @@ dropping plays server-side, and an outage coinciding with a genuine quiet period
   against this, not against scheduler reliability.
 - **GitHub Actions scheduling is materially unreliable** — measured 60–100 minute delays, silently
   skipped slots, and runner-acquisition failures that produce no logs. Delay does not compound.
-- **CI's write access rests on object ownership rather than grants.** See the full
-  refresh procedure above.
+- **CI's write access rests on object ownership rather than grants**, so every dbt build must run
+  under `SPOTIFY_PIPELINE_ROLE`. The pin that guarantees this locally lives in `~/.dbt/profiles.yml`
+  — outside the repo, unversioned, and nothing fails loudly if it is removed. See Full refresh above.
 - **The watchdog that reconciles abandoned `STARTED` rows is designed but not built.**
 - **`track_id` is release-scoped, not song-level.** ISRC is the song-level grouping lever and is
   not yet modelled.
